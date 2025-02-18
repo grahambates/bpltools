@@ -7,6 +7,7 @@
 
 #include "image.h"
 #include "log.h"
+#include "safe_mem.h"
 
 void free_image(Image *image) {
     if (image->palette) {
@@ -16,7 +17,7 @@ void free_image(Image *image) {
     if (image->data) {
 		free(image->data);
 		image->data = 0;
-	} 
+	}
 }
 
 // Load source image
@@ -64,20 +65,10 @@ Image read_png_indexed(char *input_file) {
         return image;
     }
 
-    image.palette = malloc(num_colors * sizeof(png_color));
-    if (!image.palette) {
-        error_log("Error: Memory allocation failed for palette.\n");
-        png_destroy_read_struct(&png, &info, NULL);
-        return image;
-    }
+    image.palette = safe_malloc(num_colors * sizeof(png_color));
 
     memcpy(image.palette, temp_palette, num_colors * sizeof(png_color));
-    image.palette_order = malloc(num_colors);
-    if (!image.palette_order) {
-        error_log("Error: Memory allocation failed for palette order.\n");
-        png_destroy_read_struct(&png, &info, NULL);
-        return image;
-    }
+    image.palette_order = safe_malloc(num_colors);
 	for (int i = 0; i < num_colors; i++) {
 		image.palette_order[i] = i;
 	}
@@ -94,21 +85,9 @@ Image read_png_indexed(char *input_file) {
         return image;
     }
 
-    image.data = malloc(image.width * image.height);
-    if (!image.data) {
-        error_log("Error: Memory allocation failed for image data.\n");
-        free(image.palette);
-        png_destroy_read_struct(&png, &info, NULL);
-        return image;
-    }
+    image.data = safe_malloc(image.width * image.height);
 
-    png_bytep *row_pointers = malloc(sizeof(png_bytep) * image.height);
-    if (!row_pointers) {
-        error_log("Error: Memory allocation failed for row pointers.\n");
-		free_image(&image);
-        png_destroy_read_struct(&png, &info, NULL);
-        return image;
-    }
+    png_bytep *row_pointers = safe_malloc(sizeof(png_bytep) * image.height);
 
     for (int y = 0; y < image.height; y++) {
         row_pointers[y] = &image.data[y * image.width];
@@ -159,7 +138,7 @@ void write_png_indexed(const char *filename, const Image *image) {
                  PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
     // Update the palette order in the PNG
-    png_color *new_palette = malloc(image->num_colors * sizeof(png_color));
+    png_color *new_palette = safe_malloc(image->num_colors * sizeof(png_color));
     for (int i = 0; i < image->num_colors; i++) {
         new_palette[image->palette_order[i]] = image->palette[i];
     }
@@ -169,12 +148,12 @@ void write_png_indexed(const char *filename, const Image *image) {
     png_write_info(png, info);
 
     // Remap pixel values based on the new palette order
-    unsigned char *remapped_data = malloc(image->width * image->height);
+    unsigned char *remapped_data = safe_malloc(image->width * image->height);
     for (int i = 0; i < image->width * image->height; i++) {
         remapped_data[i] = image->palette_order[image->data[i]];
     }
 
-    png_bytep *row_pointers = malloc(sizeof(png_bytep) * image->height);
+    png_bytep *row_pointers = safe_malloc(sizeof(png_bytep) * image->height);
     for (int y = 0; y < image->height; y++) {
         row_pointers[y] = &remapped_data[y * image->width];
     }

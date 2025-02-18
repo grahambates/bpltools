@@ -9,6 +9,7 @@
 
 #include "image.h"
 #include "log.h"
+#include "safe_mem.h"
 
 // Simulated-annealing settings
 #define INITIAL_TEMPERATURE 1000.0   // Starting temperature
@@ -16,19 +17,16 @@
 #define MIN_TEMPERATURE 0.1          // Stop when temperature is very low
 #define ITERATIONS_PER_TEMP 20       // Number of swaps per temperature step
 
-int *locked_indexes = NULL;
-int num_locked = 0;
+static int *locked_map = NULL;
 
-// Parses the comma-separated list of locked indexes
 void parse_locked_indexes(char *arg, int num_colors) {
     char *token = strtok(arg, ",");
-    locked_indexes = malloc(num_colors * sizeof(int));
-    num_locked = 0;
+    locked_map = safe_calloc(num_colors, sizeof(int));
 
     while (token) {
         int index = atoi(token);
         if (index >= 0 && index < num_colors) {
-            locked_indexes[num_locked++] = index;
+            locked_map[index] = 1;
         } else {
             error_log("Warning: Ignoring out-of-bounds lock index %d\n", index);
         }
@@ -36,18 +34,14 @@ void parse_locked_indexes(char *arg, int num_colors) {
     }
 }
 
-// Checks if a color index is locked
-int is_locked(int index) {
-    for (int i = 0; i < num_locked; i++) {
-        if (locked_indexes[i] == index) return 1;
-    }
-    return 0;
+static inline int is_locked(int index) {
+    return locked_map && locked_map[index];
 }
 
 // Greedy hill climbing algorithm with non-adjacent swaps
-uLongf find_optimal_palette(Image *image, unsigned char *bpl_data, int bpl_size, int interleaved) {
+void find_optimal_palette(Image *image, unsigned char *bpl_data, int bpl_size, int interleaved) {
     uLongf compressed_size = compressBound(bpl_size);
-    unsigned char *compressed_data = (unsigned char *)malloc(compressed_size);
+    unsigned char *compressed_data = (unsigned char *)safe_malloc(compressed_size);
 
     // Get initial compressed size
     c2p(image, bpl_data, interleaved);
@@ -90,13 +84,12 @@ uLongf find_optimal_palette(Image *image, unsigned char *bpl_data, int bpl_size,
     }
 
     free(compressed_data);
-    return best_size;
 }
 
 // Simulated-annealing
-uLongf find_optimal_palette_sa(Image *image, unsigned char *bpl_data, int bpl_size, int interleaved) {
+void find_optimal_palette_sa(Image *image, unsigned char *bpl_data, int bpl_size, int interleaved) {
     uLongf compressed_size = compressBound(bpl_size);
-    unsigned char *compressed_data = (unsigned char *)malloc(compressed_size);
+    unsigned char *compressed_data = (unsigned char *)safe_malloc(compressed_size);
 
     // Get initial compressed size
     c2p(image, bpl_data, interleaved);
@@ -105,7 +98,7 @@ uLongf find_optimal_palette_sa(Image *image, unsigned char *bpl_data, int bpl_si
     printf("%lu\n", best_size);
 
     // Copy initial order
-    unsigned char *best_order = (unsigned char *)malloc(image->num_colors);
+    unsigned char *best_order = (unsigned char *)safe_malloc(image->num_colors);
     memcpy(best_order, image->palette_order, image->num_colors);
 
     double T = INITIAL_TEMPERATURE;
@@ -161,7 +154,20 @@ uLongf find_optimal_palette_sa(Image *image, unsigned char *bpl_data, int bpl_si
 
     free(compressed_data);
     free(best_order);
-    return best_size;
+}
+
+void print_palette(const Image *image) {
+    // Need to invert order mappings
+    uint16_t *palette = safe_malloc(image->num_colors);
+    for (int i = 0; i < image->num_colors; i++) {
+        palette[image->palette_order[i]] = i;
+    }
+    printf("Palette order:\n%d", palette[0]);
+    for (int i = 1; i < image->num_colors; i++) {
+        printf(", %d", palette[i]);
+    }
+    printf("\n");
+    free(palette);
 }
 
 void print_usage(const char *prog_name) {
@@ -184,7 +190,7 @@ int main(int argc, char *argv[]) {
     static struct option long_options[] = {
         {"interleaved", no_argument, 0, 'i'},
         {"verbose", no_argument, 0, 'v'},
-        {"simulated-annealing", no_argument, 0, 'v'},
+        {"simulated-annealing", no_argument, 0, 's'},
         {"lock", required_argument, 0, 'l'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
@@ -220,17 +226,12 @@ int main(int argc, char *argv[]) {
     }
     verbose_log("%d x %d, %d colors\n", image.width, image.height, image.num_colors);
 
-    if (lock_list) {
-        parse_locked_indexes(lock_list, image.num_colors);
-    }
-
     // Allocate bitplane data
     int bpl_size = (image.width / 8) * image.height * image.bitplanes;
-    unsigned char *bpl_data = malloc(bpl_size);
-    if (!bpl_data) {
-        error_log("Error: Memory allocation failed for bitplane data.\n");
-        free_image(&image);
-        return EXIT_FAILURE;
+    unsigned char *bpl_data = safe_malloc(bpl_size);
+
+    if (lock_list) {
+        parse_locked_indexes(lock_list, image.num_colors);
     }
 
     verbose_log("Interleaved mode: %s\n", interleaved ? "ON" : "OFF");
@@ -242,23 +243,16 @@ int main(int argc, char *argv[]) {
         verbose_log("Using greedy hill climbing algorithm\n");
         find_optimal_palette(&image, bpl_data, bpl_size, interleaved);
     }
+    free(bpl_data);
 
-    // Print palette:
-    // Need to invert order mappings
-    uint16_t *palette = malloc(image.num_colors);
-    for (int i = 0; i < image.num_colors; i++) {
-        palette[image.palette_order[i]] = i;
-    }
-    printf("Palette order:\n%d", palette[0]);
-    for (int i = 1; i < image.num_colors; i++) {
-        printf(", %d", palette[i]);
-    }
-    printf("\n");
+    print_palette(&image);
 
     // Save reordered png
     write_png_indexed(output_file, &image);
 
     free_image(&image);
+    if (locked_map) free(locked_map);
+
     verbose_log("Optimisation complete!\n");
     return EXIT_SUCCESS;
 }

@@ -6,6 +6,7 @@
 
 #include "image.h"
 #include "log.h"
+#include "safe_mem.h"
 
 uint16_t convert12bit(png_color col) {
     unsigned int r = col.red >> 4;   // Convert 8-bit to 4-bit
@@ -24,7 +25,7 @@ void export_palette_raw(const Image *image, const char *filename) {
         error_log("Error: Could not open %s for writing.\n", filename);
         return;
     }
-    uint16_t *palette = malloc(image->num_colors * 2);
+    uint16_t *palette = safe_malloc(image->num_colors * 2);
     for (int i = 0; i < image->num_colors; i++) {
         unsigned char k = image->palette_order[i];
         palette[k] = swap16(convert12bit(image->palette[i]));
@@ -39,7 +40,7 @@ void export_palette_copper(const Image *image, const char *filename) {
         error_log("Error: Could not open %s for writing.\n", filename);
         return;
     }
-    uint16_t *palette = malloc(image->num_colors * 4);
+    uint16_t *palette = safe_malloc(image->num_colors * 4);
     for (int i = 0; i < image->num_colors; i++) {
         unsigned char k = image->palette_order[i];
         palette[k*2] = swap16(0x180 + k * 2);
@@ -51,11 +52,7 @@ void export_palette_copper(const Image *image, const char *filename) {
 
 void export_bitplane_data(const Image *image, const char *output_file, int interleaved) {
     int bpl_size = (image->width / 8) * image->height * image->bitplanes;
-    unsigned char *bpl_data = malloc(bpl_size);
-    if (!bpl_data) {
-        error_log("Error: Memory allocation failed for bitplane data.\n");
-        return;
-    }
+    unsigned char *bpl_data = safe_malloc(bpl_size);
 
     verbose_log("Interleaved mode: %s\n", interleaved ? "ON" : "OFF");
     c2p(image, bpl_data, interleaved);
