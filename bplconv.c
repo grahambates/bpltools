@@ -8,10 +8,10 @@
 #include "log.h"
 
 uint16_t convert12bit(png_color col) {
-	unsigned int r = col.red >> 4;   // Convert 8-bit to 4-bit
-	unsigned int g = col.green >> 4;
-	unsigned int b = col.blue >> 4;
-	return (r << 8) | (g << 4) | b;  // Amiga 12-bit RGB format
+    unsigned int r = col.red >> 4;   // Convert 8-bit to 4-bit
+    unsigned int g = col.green >> 4;
+    unsigned int b = col.blue >> 4;
+    return (r << 8) | (g << 4) | b;  // Amiga 12-bit RGB format
 }
 
 uint16_t swap16(uint16_t val) {
@@ -26,7 +26,7 @@ void export_palette_raw(const Image *image, const char *filename) {
     }
     uint16_t *palette = malloc(image->num_colors * 2);
     for (int i = 0; i < image->num_colors; i++) {
-		unsigned char k = image->palette_order[i];
+        unsigned char k = image->palette_order[i];
         palette[k] = swap16(convert12bit(image->palette[i]));
     }
     fwrite(palette, 2, image->num_colors, fp);
@@ -41,7 +41,7 @@ void export_palette_copper(const Image *image, const char *filename) {
     }
     uint16_t *palette = malloc(image->num_colors * 4);
     for (int i = 0; i < image->num_colors; i++) {
-		unsigned char k = image->palette_order[i];
+        unsigned char k = image->palette_order[i];
         palette[k*2] = swap16(0x180 + k * 2);
         palette[k*2+1] = swap16(convert12bit(image->palette[i]));
     }
@@ -57,7 +57,7 @@ void export_bitplane_data(const Image *image, const char *output_file, int inter
         return;
     }
 
-	verbose_log("Interleaved mode: %s\n", interleaved ? "ON" : "OFF");
+    verbose_log("Interleaved mode: %s\n", interleaved ? "ON" : "OFF");
     c2p(image, bpl_data, interleaved);
 
     FILE *fpout = fopen(output_file, "wb");
@@ -136,23 +136,23 @@ int main(int argc, char *argv[]) {
         error_log("Error reading PNG data\n");
         return EXIT_FAILURE;
     }
-	verbose_log("%d x %d, %d colors\n", image.width, image.height, image.num_colors);
+    verbose_log("%d x %d, %d colors\n", image.width, image.height, image.num_colors);
 
     // Export Palette if requested
     if (raw_palette_file) {
-		verbose_log("Raw palette export: %s\n", raw_palette_file);
+        verbose_log("Raw palette export: %s\n", raw_palette_file);
         export_palette_raw(&image, raw_palette_file);
     }
     if (copper_palette_file) {
-		verbose_log("Copper palette export: %s\n", copper_palette_file);
+        verbose_log("Copper palette export: %s\n", copper_palette_file);
         export_palette_copper(&image, copper_palette_file);
     }
 
-	// Export bitplane data
-	verbose_log("Bitplane data export: %s\n", output_file);
-	export_bitplane_data(&image, output_file, interleaved);
-	free_image(&image);
+    // Export bitplane data
+    verbose_log("Bitplane data export: %s\n", output_file);
+    export_bitplane_data(&image, output_file, interleaved);
+    free_image(&image);
 
-	verbose_log("Conversion complete!\n");
+    verbose_log("Conversion complete!\n");
     return EXIT_SUCCESS;
 }
