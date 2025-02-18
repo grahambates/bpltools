@@ -1,5 +1,7 @@
 # Bitplane tools
 
+Amiga bitplane image conversion tools.
+
 ## bplconv
 
 Converts 8 bit indexed PNGs to bitplane data
