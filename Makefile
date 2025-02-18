@@ -6,16 +6,18 @@ CFLAGS += $(shell $(PKG_CONFIG) --cflags $(LIBS))
 LDFLAGS := $(shell $(PKG_CONFIG) --libs $(LIBS))
 OBJS := $(SRCS:.c=.o)
 
-all: optimise convert
+TARGETS = bplopt bplconv
 
-optimise: optimise.o image.o log.o
+all: $(TARGETS)
+
+bplopt: bplopt.o image.o log.o
 	$(CC) $^ $(LDFLAGS) -o $@
 
-convert: convert.o image.o log.o
+bplconv: bplconv.o image.o log.o
 	$(CC) $^ $(LDFLAGS) -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS) optimise comvert
+	rm -f $(OBJS) $(TARGETS)
