@@ -1,0 +1,7 @@
+imgtool
+*.o
+*.bpl
+*.bin
+*.cop
+*.png
+.DS_Store
