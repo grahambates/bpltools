@@ -6,6 +6,7 @@
 #include <math.h>
 #include <getopt.h>
 #include <zlib.h>
+#include <locale.h>
 
 #include "image.h"
 #include "log.h"
@@ -47,7 +48,7 @@ void find_optimal_palette(Image *image, unsigned char *bpl_data, int bpl_size, i
     c2p(image, bpl_data, interleaved);
     compress(compressed_data, &compressed_size, bpl_data, bpl_size);
     uLongf best_size = compressed_size;
-    printf("%lu\n", best_size);
+    printf("Initial: %'lu\n", best_size);
 
     unsigned char tmp;
     int improved = 1;
@@ -72,7 +73,8 @@ void find_optimal_palette(Image *image, unsigned char *bpl_data, int bpl_size, i
                     // keep change
                     improved = 1;
                     best_size = compressed_size; // keep change
-                    printf("%lu\n", best_size);
+                    printf("\rBest: %'lu", best_size);
+					fflush(stdout);
                 } else {
                     // swap back
                     tmp = image->palette_order[i];
@@ -82,6 +84,7 @@ void find_optimal_palette(Image *image, unsigned char *bpl_data, int bpl_size, i
             }
         }
     }
+	printf("\n");
 
     free(compressed_data);
 }
@@ -95,7 +98,7 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data, int bpl_size
     c2p(image, bpl_data, interleaved);
     compress(compressed_data, &compressed_size, bpl_data, bpl_size);
     uLongf best_size = compressed_size;
-    printf("%lu\n", best_size);
+    printf("Initial: %'lu\n", best_size);
 
     // Copy initial order
     unsigned char *best_order = (unsigned char *)safe_malloc(image->num_colors);
@@ -135,7 +138,8 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data, int bpl_size
                 if (new_size < best_size) {
                     best_size = new_size;
                     memcpy(best_order, image->palette_order, image->num_colors);
-                    printf("%lu\n", best_size);
+                    printf("\rBest: %'lu T: %.2f", best_size, T);
+					fflush(stdout);
                 }
             } else {
                 // Revert swap if not accepted
@@ -147,6 +151,8 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data, int bpl_size
 
         // Cool down
         T *= COOLING_RATE;
+		printf("\rBest: %'lu T: %.2f", best_size, T);
+		fflush(stdout);
     }
 
     // Restore the best palette order found
@@ -185,6 +191,8 @@ int main(int argc, char *argv[]) {
     int sa = 0;
     char *lock_list = NULL;
     int opt;
+
+    setlocale(LC_NUMERIC, "");  // Use system's locale (e.g., `en_US`)
 
     // Define long options
     static struct option long_options[] = {
