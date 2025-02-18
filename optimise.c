@@ -30,7 +30,7 @@ void parse_locked_indexes(char *arg, int num_colors) {
         if (index >= 0 && index < num_colors) {
             locked_indexes[num_locked++] = index;
         } else {
-            fprintf(stderr, "Warning: Ignoring out-of-bounds lock index %d\n", index);
+            error_log("Warning: Ignoring out-of-bounds lock index %d\n", index);
         }
         token = strtok(NULL, ",");
     }
@@ -198,14 +198,14 @@ int main(int argc, char *argv[]) {
             case 'l': lock_list = optarg; break;
             case 'h': print_usage(argv[0]); return EXIT_SUCCESS;
             case '?':
-                fprintf(stderr, "Invalid option. Use -h for help.\n");
+                error_log("Invalid option. Use -h for help.\n");
                 return EXIT_FAILURE;
         }
     }
 
     // Ensure we have at least two positional arguments: input and output file
     if (optind + 2 != argc) {
-        fprintf(stderr, "Error: Incorrect number of arguments.\n");
+        error_log("Error: Incorrect number of arguments.\n");
         print_usage(argv[0]);
         return EXIT_FAILURE;
     }
@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
 
     Image image = read_png_indexed(input_file);
     if (!image.success) {
-        fprintf(stderr, "Error reading PNG data\n");
+        error_log("Error reading PNG data\n");
         return EXIT_FAILURE;
     }
 	verbose_log("%d x %d, %d colors\n", image.width, image.height, image.num_colors);
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
     int bpl_size = (image.width / 8) * image.height * image.bitplanes;
     unsigned char *bpl_data = malloc(bpl_size);
     if (!bpl_data) {
-        fprintf(stderr, "Error: Memory allocation failed for bitplane data.\n");
+        error_log("Error: Memory allocation failed for bitplane data.\n");
         free_image(&image);
         return EXIT_FAILURE;
     }

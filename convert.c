@@ -21,7 +21,7 @@ uint16_t swap16(uint16_t val) {
 void export_palette_raw(const Image *image, const char *filename) {
     FILE *fp = fopen(filename, "wb");
     if (!fp) {
-        fprintf(stderr, "Error: Could not open %s for writing.\n", filename);
+        error_log("Error: Could not open %s for writing.\n", filename);
         return;
     }
     uint16_t *palette = malloc(image->num_colors * 2);
@@ -36,7 +36,7 @@ void export_palette_raw(const Image *image, const char *filename) {
 void export_palette_copper(const Image *image, const char *filename) {
     FILE *fp = fopen(filename, "wb");
     if (!fp) {
-        fprintf(stderr, "Error: Could not open %s for writing.\n", filename);
+        error_log("Error: Could not open %s for writing.\n", filename);
         return;
     }
     uint16_t *palette = malloc(image->num_colors * 4);
@@ -53,17 +53,16 @@ void export_bitplane_data(const Image *image, const char *output_file, int inter
     int bpl_size = (image->width / 8) * image->height * image->bitplanes;
     unsigned char *bpl_data = malloc(bpl_size);
     if (!bpl_data) {
-        fprintf(stderr, "Error: Memory allocation failed for bitplane data.\n");
+        error_log("Error: Memory allocation failed for bitplane data.\n");
         return;
     }
 
 	verbose_log("Interleaved mode: %s\n", interleaved ? "ON" : "OFF");
     c2p(image, bpl_data, interleaved);
 
-	verbose_log("Saving output to: %s\n", output_file);
     FILE *fpout = fopen(output_file, "wb");
     if (!fpout) {
-        fprintf(stderr, "Could not open file %s for writing\n", output_file);
+        error_log("Could not open file %s for writing\n", output_file);
         free(bpl_data);
         return;
     }
@@ -117,14 +116,14 @@ int main(int argc, char *argv[]) {
                 print_usage(argv[0]);
                 return EXIT_SUCCESS;
             case '?':
-                fprintf(stderr, "Invalid option. Use -h for help.\n");
+                error_log("Invalid option. Use -h for help.\n");
                 return EXIT_FAILURE;
         }
     }
 
     // Ensure we have at least two positional arguments: input and output file
     if (optind + 2 != argc) {
-        fprintf(stderr, "Error: Incorrect number of arguments.\n");
+        error_log("Error: Incorrect number of arguments.\n");
         print_usage(argv[0]);
         return EXIT_FAILURE;
     }
@@ -134,7 +133,7 @@ int main(int argc, char *argv[]) {
 
     Image image = read_png_indexed(input_file);
     if (!image.success) {
-        fprintf(stderr, "Error reading PNG data\n");
+        error_log("Error reading PNG data\n");
         return EXIT_FAILURE;
     }
 	verbose_log("%d x %d, %d colors\n", image.width, image.height, image.num_colors);

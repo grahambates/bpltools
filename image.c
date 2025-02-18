@@ -19,30 +19,31 @@ void free_image(Image *image) {
 	} 
 }
 
+// Load source image
 Image read_png_indexed(char *input_file) {
 	verbose_log("Reading PNG: %s\n", input_file);
     Image image = {0};
     FILE *fp = fopen(input_file, "rb");
     if (!fp) {
-        fprintf(stderr, "Failed to open file %s\n", input_file);
+        error_log("Failed to open file %s\n", input_file);
         return image;
     }
 
     png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        fprintf(stderr, "Error: Failed to create PNG read struct.\n");
+        error_log("Error: Failed to create PNG read struct.\n");
         return image;
     }
 
     png_infop info = png_create_info_struct(png);
     if (!info) {
-        fprintf(stderr, "Error: Failed to create PNG info struct.\n");
+        error_log("Error: Failed to create PNG info struct.\n");
         png_destroy_read_struct(&png, NULL, NULL);
         return image;
     }
 
     if (setjmp(png_jmpbuf(png))) {
-        fprintf(stderr, "Error: PNG reading failed.\n");
+        error_log("Error: PNG reading failed.\n");
         png_destroy_read_struct(&png, &info, NULL);
         return image;
     }
@@ -50,7 +51,7 @@ Image read_png_indexed(char *input_file) {
     png_init_io(png, fp);
     png_read_info(png, info);
     if (png_get_color_type(png, info) != PNG_COLOR_TYPE_PALETTE || png_get_bit_depth(png, info) != 8) {
-        fprintf(stderr, "Error: Not an 8-bit indexed PNG.\n");
+        error_log("Error: Not an 8-bit indexed PNG.\n");
         png_destroy_read_struct(&png, &info, NULL);
         return image;
     }
@@ -58,14 +59,14 @@ Image read_png_indexed(char *input_file) {
     png_colorp temp_palette;
     int num_colors;
     if (!png_get_PLTE(png, info, &temp_palette, &num_colors)) {
-        fprintf(stderr, "Error: Failed to get PNG palette.\n");
+        error_log("Error: Failed to get PNG palette.\n");
         png_destroy_read_struct(&png, &info, NULL);
         return image;
     }
 
     image.palette = malloc(num_colors * sizeof(png_color));
     if (!image.palette) {
-        fprintf(stderr, "Error: Memory allocation failed for palette.\n");
+        error_log("Error: Memory allocation failed for palette.\n");
         png_destroy_read_struct(&png, &info, NULL);
         return image;
     }
@@ -73,7 +74,7 @@ Image read_png_indexed(char *input_file) {
     memcpy(image.palette, temp_palette, num_colors * sizeof(png_color));
     image.palette_order = malloc(num_colors);
     if (!image.palette_order) {
-        fprintf(stderr, "Error: Memory allocation failed for palette order.\n");
+        error_log("Error: Memory allocation failed for palette order.\n");
         png_destroy_read_struct(&png, &info, NULL);
         return image;
     }
@@ -87,7 +88,7 @@ Image read_png_indexed(char *input_file) {
     image.bitplanes = (int)ceil(log2(image.num_colors));
 
     if (image.width % 16) {
-        fprintf(stderr, "Error: Image width must be a multiple of 16.\n");
+        error_log("Error: Image width must be a multiple of 16.\n");
         free(image.palette);
         png_destroy_read_struct(&png, &info, NULL);
         return image;
@@ -95,7 +96,7 @@ Image read_png_indexed(char *input_file) {
 
     image.data = malloc(image.width * image.height);
     if (!image.data) {
-        fprintf(stderr, "Error: Memory allocation failed for image data.\n");
+        error_log("Error: Memory allocation failed for image data.\n");
         free(image.palette);
         png_destroy_read_struct(&png, &info, NULL);
         return image;
@@ -103,7 +104,7 @@ Image read_png_indexed(char *input_file) {
 
     png_bytep *row_pointers = malloc(sizeof(png_bytep) * image.height);
     if (!row_pointers) {
-        fprintf(stderr, "Error: Memory allocation failed for row pointers.\n");
+        error_log("Error: Memory allocation failed for row pointers.\n");
 		free_image(&image);
         png_destroy_read_struct(&png, &info, NULL);
         return image;
@@ -121,30 +122,31 @@ Image read_png_indexed(char *input_file) {
     return image;
 }
 
+// Write image with reordered palette
 void write_png_indexed(const char *filename, const Image *image) {
     FILE *fp = fopen(filename, "wb");
     if (!fp) {
-        fprintf(stderr, "Error: Could not open %s for writing.\n", filename);
+        error_log("Error: Could not open %s for writing.\n", filename);
         return;
     }
 
     png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) {
-        fprintf(stderr, "Error: Failed to create PNG write struct.\n");
+        error_log("Error: Failed to create PNG write struct.\n");
         fclose(fp);
         return;
     }
 
     png_infop info = png_create_info_struct(png);
     if (!info) {
-        fprintf(stderr, "Error: Failed to create PNG info struct.\n");
+        error_log("Error: Failed to create PNG info struct.\n");
         png_destroy_write_struct(&png, NULL);
         fclose(fp);
         return;
     }
 
     if (setjmp(png_jmpbuf(png))) {
-        fprintf(stderr, "Error: PNG writing failed.\n");
+        error_log("Error: PNG writing failed.\n");
         png_destroy_write_struct(&png, &info);
         fclose(fp);
         return;
@@ -188,6 +190,7 @@ void write_png_indexed(const char *filename, const Image *image) {
     printf("Updated PNG written to %s\n", filename);
 }
 
+// Chunky to planar conversion
 void c2p(const Image *image, unsigned char *bpl_data, int interleaved) {
     int byte_width = image->width / 8;
     int row_size = interleaved ? image->bitplanes * byte_width : byte_width;
