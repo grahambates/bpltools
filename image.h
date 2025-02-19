@@ -1,14 +1,14 @@
 #include <png.h>
 
 typedef struct {
-    int success;
-    int num_colors;
-    int bitplanes;
-    int width;
-    int height;
-    png_colorp palette;
-	unsigned char* palette_order;
-    unsigned char *data;
+  int success;
+  int num_colors;
+  int bitplanes;
+  int width;
+  int height;
+  png_colorp palette;
+  unsigned char *palette_order;
+  unsigned char *data;
 } Image;
 
 void free_image(Image *image);
