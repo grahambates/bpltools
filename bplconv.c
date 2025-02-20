@@ -29,6 +29,7 @@ void export_palette_raw(const Image *image, const char *filename) {
     palette[k] = swap16(convert12bit(image->palette[i]));
   }
   fwrite(palette, 2, image->num_colors, fp);
+  free(palette);
   fclose(fp);
 }
 
@@ -45,6 +46,7 @@ void export_palette_copper(const Image *image, const char *filename) {
     palette[k * 2 + 1] = swap16(convert12bit(image->palette[i]));
   }
   fwrite(palette, 4, image->num_colors, fp);
+  free(palette);
   fclose(fp);
 }
 
