@@ -40,6 +40,16 @@ static inline int is_locked(int index) {
   return locked_map && locked_map[index];
 }
 
+uLongf compress_chunky(Image *image) {
+  int chunky_size = image->width * image->height;
+  uLongf compressed_size = compressBound(chunky_size);
+  unsigned char *compressed_data =
+      (unsigned char *)safe_malloc(compressed_size);
+
+  compress(compressed_data, &compressed_size, image->data, chunky_size);
+  return compressed_size;
+}
+
 // Greedy hill climbing algorithm with non-adjacent swaps
 void find_optimal_palette(Image *image, unsigned char *bpl_data, int bpl_size,
                           int interleaved) {
@@ -253,6 +263,10 @@ int main(int argc, char *argv[]) {
   }
   verbose_log("%d x %d, %d colors\n", image.width, image.height,
               image.num_colors);
+
+  // Get compressed size of chunky data
+  uLongf chunky_compressed = compress_chunky(&image);
+  printf("Compressed chunky size %'lu\n", chunky_compressed);
 
   // Allocate bitplane data
   int bpl_size = (image.width / 8) * image.height * image.bitplanes;
