@@ -236,8 +236,7 @@ int main(int argc, char *argv[]) {
       {"help", no_argument, 0, 'h'},
       {0, 0, 0, 0}};
 
-  while ((opt = getopt_long(argc, argv, "ivsr:c:b:l:h", long_options, NULL)) !=
-         -1) {
+  while ((opt = getopt_long(argc, argv, "ivst:c:m:I:l:h", long_options, NULL)) != -1) {
     switch (opt) {
     case 'i':
       interleaved = 1;
