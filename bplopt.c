@@ -88,7 +88,7 @@ void find_optimal_palette(Image *image, unsigned char *bpl_data, int bpl_size,
           // keep change
           improved = 1;
           best_size = compressed_size; // keep change
-          printf("\rBest: %'lu", best_size);
+          printf("\rBest: %'lu   ", best_size);
           fflush(stdout);
         } else {
           // swap back
@@ -156,7 +156,7 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data,
         if (new_size < best_size) {
           best_size = new_size;
           memcpy(best_order, image->palette_order, image->num_colors);
-          printf("\rBest: %'lu T: %.2f", best_size, T);
+          printf("\rBest: %'lu T: %.2f    ", best_size, T);
           fflush(stdout);
         }
       } else {
@@ -169,7 +169,7 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data,
 
     // Cool down
     T *= sa_cooling;
-    printf("\rBest: %'lu T: %.2f", best_size, T);
+    printf("\rBest: %'lu T: %.2f    ", best_size, T);
     fflush(stdout);
   }
 
