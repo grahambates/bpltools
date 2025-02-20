@@ -14,10 +14,10 @@
 #include "safe_mem.h"
 
 // Simulated-annealing settings
-#define INITIAL_TEMPERATURE 1000.0 // Starting temperature
-#define COOLING_RATE 0.99      // Cooling multiplier (0.99 means slow cooling)
-#define MIN_TEMPERATURE 0.1    // Stop when temperature is very low
-#define ITERATIONS_PER_TEMP 20 // Number of swaps per temperature step
+float sa_start_temp = 1000.0; // Starting temperature
+float sa_cooling = 0.99;      // Cooling multiplier (0.99 means slow cooling)
+float sa_min_temp = 0.1;      // Stop when temperature is very low
+int sa_iterations = 20;       // Number of swaps per temperature step
 
 static int *locked_map = NULL;
 
@@ -121,10 +121,10 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data,
   unsigned char *best_order = (unsigned char *)safe_malloc(image->num_colors);
   memcpy(best_order, image->palette_order, image->num_colors);
 
-  double T = INITIAL_TEMPERATURE;
+  double T = sa_start_temp;
 
-  while (T > MIN_TEMPERATURE) {
-    for (int iter = 0; iter < ITERATIONS_PER_TEMP; iter++) {
+  while (T > sa_min_temp) {
+    for (int iter = 0; iter < sa_iterations; iter++) {
       // Pick two random indices to swap
       int i, j;
       do {
@@ -168,7 +168,7 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data,
     }
 
     // Cool down
-    T *= COOLING_RATE;
+    T *= sa_cooling;
     printf("\rBest: %'lu T: %.2f", best_size, T);
     fflush(stdout);
   }
@@ -198,9 +198,19 @@ void print_usage(const char *prog_name) {
   printf("Usage: %s [options] <input.png> <output.png>\n", prog_name);
   printf("Options:\n");
   printf("  -i, --interleaved          Enable interleaved mode\n");
-  printf("  -s, --simulated-annealing  Use simulated annealing\n");
   printf(
       "  -l, --lock=INDEXES         Lock palette indexes (comma separated)\n");
+  printf("  -s, --simulated-annealing  Use simulated annealing\n");
+  printf("  -t, --sa-start-temp        Starting temperature [default: %.1f]\n",
+         sa_start_temp);
+  printf("  -c, --sa-cooling           Cooling multiplier [default: %.1f]\n",
+         sa_cooling);
+  printf("  -m, --sa-min-temp          Stop when temperature reaches low value "
+         "[default: %.1f]\n",
+         sa_min_temp);
+  printf("  -I, --sa-iterations        Number of swaps per temperature step "
+         "[default: %d]\n",
+         sa_iterations);
   printf("  -v, --verbose              Enable verbose output\n");
   printf("  -h, --help                 Display this help message\n");
 }
@@ -218,6 +228,10 @@ int main(int argc, char *argv[]) {
       {"interleaved", no_argument, 0, 'i'},
       {"verbose", no_argument, 0, 'v'},
       {"simulated-annealing", no_argument, 0, 's'},
+      {"sa-start-temp", required_argument, 0, 't'},
+      {"sa-cooling", required_argument, 0, 'c'},
+      {"sa-min-temp", required_argument, 0, 'm'},
+      {"sa-min-iterations", required_argument, 0, 'I'},
       {"lock", required_argument, 0, 'l'},
       {"help", no_argument, 0, 'h'},
       {0, 0, 0, 0}};
@@ -233,6 +247,18 @@ int main(int argc, char *argv[]) {
       break;
     case 's':
       sa = 1;
+      break;
+    case 't':
+      sa_start_temp = strtof(optarg, NULL);
+      break;
+    case 'c':
+      sa_cooling = strtof(optarg, NULL);
+      break;
+    case 'm':
+      sa_min_temp = strtof(optarg, NULL);
+      break;
+    case 'I':
+      sa_iterations = atoi(optarg);
       break;
     case 'l':
       lock_list = optarg;
@@ -279,7 +305,8 @@ int main(int argc, char *argv[]) {
   verbose_log("Interleaved mode: %s\n", interleaved ? "ON" : "OFF");
 
   if (sa) {
-    verbose_log("Using simulated annealing algorithm\n");
+    verbose_log("Simulated Annealing:\nstart %.2f, cooling %.2f, min %.2f, iterations %d\n",
+                sa_start_temp, sa_cooling, sa_min_temp, sa_iterations);
     find_optimal_palette_sa(&image, bpl_data, bpl_size, interleaved);
   } else {
     verbose_log("Using greedy hill climbing algorithm\n");
