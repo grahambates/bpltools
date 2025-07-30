@@ -48,6 +48,7 @@ uLongf compress_chunky(Image *image) {
       (unsigned char *)safe_malloc(compressed_size);
 
   compress(compressed_data, &compressed_size, image->data, chunky_size);
+  free(compressed_data);
   return compressed_size;
 }
 
