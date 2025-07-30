@@ -183,7 +183,7 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data,
 
 void print_palette(const Image *image) {
   // Need to invert order mappings
-  uint16_t *palette = safe_malloc(image->num_colors);
+  uint16_t *palette = safe_malloc(image->num_colors * sizeof(uint16_t));
   for (int i = 0; i < image->num_colors; i++) {
     palette[image->palette_order[i]] = i;
   }
