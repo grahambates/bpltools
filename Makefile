@@ -5,7 +5,7 @@ CFLAGS := -Wall -Wextra -std=c11 -O2
 DEPFLAGS := -MMD -MP
 LIBS := libpng zlib
 CFLAGS += $(shell $(PKG_CONFIG) --cflags $(LIBS))
-LDLIBS := $(shell $(PKG_CONFIG) --libs $(LIBS))
+LDLIBS := $(shell $(PKG_CONFIG) --libs $(LIBS)) -lm
 
 SRCS := bplopt.c bplconv.c image.c log.c
 OBJS := $(SRCS:.c=.o)
