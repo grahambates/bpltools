@@ -1,7 +1,7 @@
 CC ?= gcc
 PKG_CONFIG := pkg-config
 
-CFLAGS := -Wall -Wextra -std=c11
+CFLAGS := -Wall -Wextra -std=c11 -O2
 DEPFLAGS := -MMD -MP
 LIBS := libpng zlib
 CFLAGS += $(shell $(PKG_CONFIG) --cflags $(LIBS))
