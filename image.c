@@ -10,6 +10,10 @@
 #include "safe_mem.h"
 
 void free_image(Image *image) {
+  if (image->palette_order) {
+    free(image->palette_order);
+    image->palette_order = 0;
+  }
   if (image->palette) {
     free(image->palette);
     image->palette = 0;

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
+#include <stdint.h>
 
 #include "image.h"
 #include "log.h"
@@ -47,6 +48,7 @@ uLongf compress_chunky(Image *image) {
       (unsigned char *)safe_malloc(compressed_size);
 
   compress(compressed_data, &compressed_size, image->data, chunky_size);
+  free(compressed_data);
   return compressed_size;
 }
 
@@ -182,7 +184,7 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data,
 
 void print_palette(const Image *image) {
   // Need to invert order mappings
-  uint16_t *palette = safe_malloc(image->num_colors);
+  uint16_t *palette = safe_malloc(image->num_colors * sizeof(uint16_t));
   for (int i = 0; i < image->num_colors; i++) {
     palette[image->palette_order[i]] = i;
   }
