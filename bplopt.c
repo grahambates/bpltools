@@ -21,6 +21,7 @@ float sa_min_temp = 0.1;      // Stop when temperature is very low
 int sa_iterations = 20;       // Number of swaps per temperature step
 
 static int *locked_map = NULL;
+static int ehb_mode = 0;
 
 void parse_locked_indexes(char *arg, int num_colors) {
   char *token = strtok(arg, ",");
@@ -39,6 +40,18 @@ void parse_locked_indexes(char *arg, int num_colors) {
 
 static inline int is_locked(int index) {
   return locked_map && locked_map[index];
+}
+
+// Swap palette entries; in EHB mode also swap the corresponding half-brite pair
+static inline void swap_palette(unsigned char *palette_order, int i, int j) {
+  unsigned char tmp = palette_order[i];
+  palette_order[i] = palette_order[j];
+  palette_order[j] = tmp;
+  if (ehb_mode) {
+    tmp = palette_order[i + 32];
+    palette_order[i + 32] = palette_order[j + 32];
+    palette_order[j + 32] = tmp;
+  }
 }
 
 uLongf compress_chunky(Image *image) {
@@ -65,21 +78,20 @@ void find_optimal_palette(Image *image, unsigned char *bpl_data, int bpl_size,
   uLongf best_size = compressed_size;
   printf("Initial: %'lu\n", best_size);
 
-  unsigned char tmp;
   int improved = 1;
+  // In EHB mode, only swap among the base 32 colors
+  int max_color = ehb_mode ? 32 : image->num_colors;
 
   while (improved) {
     improved = 0;
-    for (int i = 0; i < image->num_colors; i++) {
+    for (int i = 0; i < max_color; i++) {
       if (is_locked(i))
         continue;
-      for (int j = i + 1; j < image->num_colors; j++) {
+      for (int j = i + 1; j < max_color; j++) {
         if (is_locked(j))
           continue;
-        // Swap pair
-        tmp = image->palette_order[i];
-        image->palette_order[i] = image->palette_order[j];
-        image->palette_order[j] = tmp;
+        // Swap pair (and EHB counterparts if in EHB mode)
+        swap_palette(image->palette_order, i, j);
 
         // Convert and compress new palette order
         c2p(image, bpl_data, interleaved);
@@ -94,9 +106,7 @@ void find_optimal_palette(Image *image, unsigned char *bpl_data, int bpl_size,
           fflush(stdout);
         } else {
           // swap back
-          tmp = image->palette_order[i];
-          image->palette_order[i] = image->palette_order[j];
-          image->palette_order[j] = tmp;
+          swap_palette(image->palette_order, i, j);
         }
       }
     }
@@ -124,23 +134,23 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data,
   memcpy(best_order, image->palette_order, image->num_colors);
 
   double T = sa_start_temp;
+  // In EHB mode, only swap among the base 32 colors
+  int max_color = ehb_mode ? 32 : image->num_colors;
 
   while (T > sa_min_temp) {
     for (int iter = 0; iter < sa_iterations; iter++) {
       // Pick two random indices to swap
       int i, j;
       do {
-        i = rand() % image->num_colors;
+        i = rand() % max_color;
       } while (is_locked(i));
 
       do {
-        j = rand() % image->num_colors;
+        j = rand() % max_color;
       } while (is_locked(j) || j == i);
 
-      // Swap colors
-      unsigned char tmp = image->palette_order[i];
-      image->palette_order[i] = image->palette_order[j];
-      image->palette_order[j] = tmp;
+      // Swap colors (and EHB counterparts if in EHB mode)
+      swap_palette(image->palette_order, i, j);
 
       // Recompute compressed size
       c2p(image, bpl_data, interleaved);
@@ -163,9 +173,7 @@ void find_optimal_palette_sa(Image *image, unsigned char *bpl_data,
         }
       } else {
         // Revert swap if not accepted
-        tmp = image->palette_order[i];
-        image->palette_order[i] = image->palette_order[j];
-        image->palette_order[j] = tmp;
+        swap_palette(image->palette_order, i, j);
       }
     }
 
@@ -199,6 +207,7 @@ void print_palette(const Image *image) {
 void print_usage(const char *prog_name) {
   printf("Usage: %s [options] <input.png> <output.png>\n", prog_name);
   printf("Options:\n");
+  printf("  -e, --ehb                  EHB mode (64 colors, upper 32 mirror lower 32)\n");
   printf("  -i, --interleaved          Enable interleaved mode\n");
   printf(
       "  -l, --lock=INDEXES         Lock palette indexes (comma separated)\n");
@@ -227,6 +236,7 @@ int main(int argc, char *argv[]) {
 
   // Define long options
   static struct option long_options[] = {
+      {"ehb", no_argument, 0, 'e'},
       {"interleaved", no_argument, 0, 'i'},
       {"verbose", no_argument, 0, 'v'},
       {"simulated-annealing", no_argument, 0, 's'},
@@ -238,8 +248,11 @@ int main(int argc, char *argv[]) {
       {"help", no_argument, 0, 'h'},
       {0, 0, 0, 0}};
 
-  while ((opt = getopt_long(argc, argv, "ivst:c:m:I:l:h", long_options, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "eivst:c:m:I:l:h", long_options, NULL)) != -1) {
     switch (opt) {
+    case 'e':
+      ehb_mode = 1;
+      break;
     case 'i':
       interleaved = 1;
       break;
@@ -291,6 +304,13 @@ int main(int argc, char *argv[]) {
   verbose_log("%d x %d, %d colors\n", image.width, image.height,
               image.num_colors);
 
+  if (ehb_mode && image.num_colors != 64) {
+    error_log("Error: EHB mode requires exactly 64 colors, got %d\n",
+              image.num_colors);
+    free_image(&image);
+    return EXIT_FAILURE;
+  }
+
   // Get compressed size of chunky data
   uLongf chunky_compressed = compress_chunky(&image);
   printf("Compressed chunky size %'lu\n", chunky_compressed);
@@ -301,8 +321,17 @@ int main(int argc, char *argv[]) {
 
   if (lock_list) {
     parse_locked_indexes(lock_list, image.num_colors);
+    if (ehb_mode) {
+      for (int i = 32; i < 64; i++) {
+        if (is_locked(i)) {
+          error_log("Warning: Lock index %d ignored in EHB mode (use 0-31)\n", i);
+          locked_map[i] = 0;
+        }
+      }
+    }
   }
 
+  verbose_log("EHB mode: %s\n", ehb_mode ? "ON" : "OFF");
   verbose_log("Interleaved mode: %s\n", interleaved ? "ON" : "OFF");
 
   if (sa) {
