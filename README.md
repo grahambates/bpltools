@@ -24,7 +24,7 @@ Inspired by [BPLOptimize by TEK](https://www.pouet.net/prod.php?which=71288). Th
 
 ```
 Usage: bplopt [options] <input.png> <output.png>
-Options:\n");
+Options:
   -i, --interleaved          Enable interleaved mode
   -s, --simulated-annealing  Use simulated annealing
   -l, --lock=INDEXES         Lock palette indexes (comma separated)
